@@ -18,6 +18,7 @@ Revision 2:
     Thanks Lee Wei Ping for trying and pointing out the difficulty & ambiguity with future_prediction SRTF.
 '''
 import sys
+import queue as queue
 
 input_file = 'input.txt'
 
@@ -48,11 +49,74 @@ def FCFS_scheduling(process_list):
 #Input: process_list, time_quantum (Positive Integer)
 #Output_1 : Schedule list contains pairs of (time_stamp, proccess_id) indicating the time switching to that proccess_id
 #Output_2 : Average Waiting Time
+#Based on assumption that when the job end at t = 5, process arriving at t = 5 is already at the ready queue.
 def RR_scheduling(process_list, time_quantum ):
-    return (["to be completed, scheduling process_list on round robin policy with time_quantum"], 0.0)
+
+    schedule = []
+    current_time = 0
+    waiting_time = 0
+
+    pq = queue.PriorityQueue()
+
+    for process in process_list:
+        # (arrive_time, cur_job_end_time(to make sure it process after job arriving at cur_job_end_time is processed first), id, burst_time, waiting_time)
+        pq.put((process.arrive_time, 0, process.id, process.burst_time, 0))
+
+
+    while not pq.empty():
+        process = list(pq.get())
+        if current_time < process[0]:
+            current_time = process[0]
+        schedule.append((current_time, process[2]))
+        process[4] = process[4] + (current_time - process[0])
+        next_arr_time = current_time + time_quantum
+        if process[3] > time_quantum:
+            process[0] = next_arr_time
+            process[3] = process[3] - time_quantum
+            process[1] = next_arr_time
+            pq.put(tuple(process))
+        else:
+            next_arr_time = current_time + process[3]
+            waiting_time += process[4]
+        current_time = next_arr_time
+
+    average_waiting_time = waiting_time/float(len(process_list))
+    return schedule, average_waiting_time
 
 def SRTF_scheduling(process_list):
-    return (["to be completed, scheduling process_list on SRTF, using process.burst_time to calculate the remaining time of the current process "], 0.0)
+
+    schedule = []
+    current_time = 0
+    waiting_time = 0
+
+    # pq = queue.PriorityQueue()
+
+    processes = []
+
+    for process in process_list:
+        # (arrive_time, cur_job_end_time(to make sure it process after job arriving at cur_job_end_time is processed first), id, burst_time, waiting_time)
+        processes.append((process.burst_time, process.arrive_time, process.id))
+        # pq.put((process.burst_time, process.arrive_time, process.id))
+
+    processes.sort()
+
+    while len(processes) != 0:
+        suitable_slot = False
+        for i in range(len(processes)):
+            process = processes[i]
+            if process[1] <= current_time:
+                schedule.append((current_time, process[2]))
+                current_time += process[0]
+                waiting_time += current_time - process[1]
+                processes.pop(i)
+                suitable_slot = True
+                break
+        if not suitable_slot:
+            current_time += 1
+
+    average_waiting_time = waiting_time/float(len(process_list))
+    return schedule, average_waiting_time
+
 
 def SJF_scheduling(process_list, alpha):
     return (["to be completed, scheduling SJF without using information from process.burst_time"],0.0)
@@ -84,7 +148,7 @@ def main(argv):
     FCFS_schedule, FCFS_avg_waiting_time =  FCFS_scheduling(process_list)
     write_output('FCFS.txt', FCFS_schedule, FCFS_avg_waiting_time )
     print ("simulating RR ----")
-    RR_schedule, RR_avg_waiting_time =  RR_scheduling(process_list,time_quantum = 2)
+    RR_schedule, RR_avg_waiting_time =  RR_scheduling(process_list,time_quantum = 5)
     write_output('RR.txt', RR_schedule, RR_avg_waiting_time )
     print ("simulating SRTF ----")
     SRTF_schedule, SRTF_avg_waiting_time =  SRTF_scheduling(process_list)
