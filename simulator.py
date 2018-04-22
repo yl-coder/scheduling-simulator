@@ -119,8 +119,48 @@ def SRTF_scheduling(process_list):
 
 
 def SJF_scheduling(process_list, alpha):
-    return (["to be completed, scheduling SJF without using information from process.burst_time"],0.0)
 
+    schedule = []
+    current_time = 0
+    waiting_time = 0
+
+    #Store the predicted value of process, default guess is 5
+    predicted = {}
+    for process in process_list:
+        predicted[process.id] = 5
+
+    #Modified structure to store the processes
+    processes = []
+
+    for process in process_list:
+        # (arrive_time, cur_job_end_time(to make sure it process after job arriving at cur_job_end_time is processed first), id, burst_time, waiting_time)
+        processes.append([5, process.arrive_time, process.burst_time, process.id])
+        # pq.put((process.burst_time, process.arrive_time, process.id))
+
+    processes.sort()
+
+    while len(processes) != 0:
+        suitable_slot = False
+        for i in range(len(processes)):
+            process = processes[i]
+            if process[1] <= current_time:
+                schedule.append((current_time, process[3]))
+                current_time += process[2]
+                waiting_time += current_time - process[1]
+                processes.pop(i)
+                suitable_slot = True
+                #Modify the processes queue and sort it again
+                processId = process[3]
+                predicted[processId] = (alpha * process[2]) + ((1 - alpha) * predicted[processId])
+                for c in range(len(processes)):
+                    processes[c][0] = predicted[processes[c][3]]
+                processes.sort()
+                break
+        if not suitable_slot:
+            current_time += 1
+
+    average_waiting_time = waiting_time/float(len(process_list))
+    return schedule, average_waiting_time
 
 def read_input():
     result = []
